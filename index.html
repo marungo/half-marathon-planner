@@ -1,0 +1,327 @@
+
+<style>
+* { box-sizing: border-box; }
+.plan-wrap { padding: 1rem 0; font-family: var(--font-sans); }
+.phase-label { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: .06em; color: var(--color-text-tertiary); margin: 1.25rem 0 .4rem; }
+.weeks-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.week-card { border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); padding: 10px 12px; cursor: pointer; transition: border-color .15s, background .15s; background: var(--color-background-primary); }
+.week-card:hover { border-color: var(--color-border-secondary); background: var(--color-background-secondary); }
+.week-card.active { border-color: var(--color-border-primary); background: var(--color-background-secondary); }
+.week-card.cutback { border-left: 2px solid #1D9E75; border-radius: 0 var(--border-radius-md) var(--border-radius-md) 0; }
+.wk-num { font-size: 11px; color: var(--color-text-tertiary); margin-bottom: 2px; }
+.wk-miles { font-size: 18px; font-weight: 500; color: var(--color-text-primary); }
+.wk-miles span { font-size: 11px; font-weight: 400; color: var(--color-text-tertiary); }
+.wk-long { font-size: 12px; color: var(--color-text-secondary); margin-top: 2px; }
+.wk-tag { display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 4px; margin-top: 4px; font-weight: 500; }
+.tag-cutback { background: #E1F5EE; color: #0F6E56; }
+.tag-race { background: #FAECE7; color: #993C1D; }
+.tag-taper { background: #EEEDFE; color: #534AB7; }
+.tag-quality { background: #E6F1FB; color: #185FA5; }
+.detail-panel { border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); padding: 16px; margin-top: 12px; background: var(--color-background-primary); }
+.detail-title { font-size: 14px; font-weight: 500; color: var(--color-text-primary); margin: 0 0 12px; }
+.day-row { display: grid; grid-template-columns: 60px 1fr auto; gap: 8px; align-items: start; padding: 7px 0; border-top: 0.5px solid var(--color-border-tertiary); font-size: 13px; }
+.day-name { color: var(--color-text-secondary); font-weight: 500; padding-top: 1px; }
+.day-desc { color: var(--color-text-primary); line-height: 1.5; }
+.day-miles { color: var(--color-text-tertiary); font-size: 12px; white-space: nowrap; padding-top: 1px; }
+.day-badge { display: inline-block; font-size: 10px; padding: 1px 5px; border-radius: 3px; margin-right: 4px; font-weight: 500; vertical-align: middle; }
+.b-run { background: #E6F1FB; color: #185FA5; }
+.b-strength { background: #E1F5EE; color: #0F6E56; }
+.b-vo2 { background: #EEEDFE; color: #534AB7; }
+.b-long { background: #FAECE7; color: #993C1D; }
+.b-rest { background: #F1EFE8; color: #5F5E5A; }
+.chart-wrap { position: relative; width: 100%; height: 100px; margin-bottom: 16px; }
+.legend { display: flex; flex-wrap: wrap; gap: 12px; font-size: 11px; color: var(--color-text-secondary); margin-bottom: 8px; }
+.legend span { display: flex; align-items: center; gap: 4px; }
+.leg-dot { width: 8px; height: 8px; border-radius: 2px; }
+</style>
+<div class="plan-wrap">
+  <div class="legend">
+    <span><span class="leg-dot" style="background:#378ADD"></span>Running miles/week</span>
+    <span><span class="leg-dot" style="background:#1D9E75"></span>Cutback week</span>
+    <span><span class="leg-dot" style="background:#D85A30"></span>Race week</span>
+  </div>
+  <div class="chart-wrap"><canvas id="mc"></canvas></div>
+
+  <div class="phase-label">Phase 1 — Base building (weeks 1–6)</div>
+  <div class="weeks-grid" id="p1"></div>
+  <div class="phase-label">Phase 2 — Aerobic development (weeks 7–14)</div>
+  <div class="weeks-grid" id="p2"></div>
+  <div class="phase-label">Phase 3 — Race-specific work (weeks 15–22)</div>
+  <div class="weeks-grid" id="p3"></div>
+  <div class="phase-label">Phase 4 — Taper &amp; race (weeks 23–26)</div>
+  <div class="weeks-grid" id="p4"></div>
+
+  <div class="detail-panel" id="detail" style="display:none"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const W = [
+  {w:1, total:11, long:4, cutback:false, tag:'', days:[
+    ['Mon','Rest','—','rest'],
+    ['Tue','Easy run — conversational pace','3 mi','run'],
+    ['Wed','Lower body strength — squats, lunges, glute bridges, clamshells (30–40 min)','—','strength'],
+    ['Thu','VO2 intervals — 6×1 min hard / 2 min walk-jog','2 mi','vo2'],
+    ['Fri','Rest','—','rest'],
+    ['Sat','Long run — easy pace throughout','4 mi','long'],
+    ['Sun','Rest','—','rest']]},
+  {w:2, total:12, long:5, cutback:false, tag:'', days:[
+    ['Mon','Rest','—','rest'],
+    ['Tue','Easy run','3 mi','run'],
+    ['Wed','Upper body + core — rows, press, dead bugs, planks (30–40 min)','—','strength'],
+    ['Thu','VO2 intervals — 6×1 min hard / 90s walk-jog','2 mi','vo2'],
+    ['Fri','Rest','—','rest'],
+    ['Sat','Long run','5 mi','long'],
+    ['Sun','Rest','—','rest']]},
+  {w:3, total:13, long:6, cutback:false, tag:'', days:[
+    ['Mon','Rest','—','rest'],
+    ['Tue','Easy run','3 mi','run'],
+    ['Wed','Lower body strength — single-leg RDLs, step-ups, hip thrusts','—','strength'],
+    ['Thu','VO2 intervals — 8×1 min hard / 90s easy','2 mi','vo2'],
+    ['Fri','Rest','—','rest'],
+    ['Sat','Long run','6 mi','long'],
+    ['Sun','Rest','—','rest']]},
+  {w:4, total:9, long:4, cutback:true, tag:'cutback', days:[
+    ['Mon','Rest','—','rest'],
+    ['Tue','Easy run — shorter, very relaxed','2 mi','run'],
+    ['Wed','Upper body + core — lighter load this week','—','strength'],
+    ['Thu','Easy jog + 4 strides','2 mi','run'],
+    ['Fri','Rest','—','rest'],
+    ['Sat','Long run — easy','4 mi','long'],
+    ['Sun','Rest','—','rest']]},
+  {w:5, total:14, long:7, cutback:false, tag:'', days:[
+    ['Mon','Rest','—','rest'],
+    ['Tue','Easy run','3 mi','run'],
+    ['Wed','Lower body strength — add load from wk 3','—','strength'],
+    ['Thu','VO2 intervals — 8×1 min / 90s easy','2 mi','vo2'],
+    ['Fri','Rest','—','rest'],
+    ['Sat','Long run','7 mi','long'],
+    ['Sun','Rest','—','rest']]},
+  {w:6, total:15, long:8, cutback:false, tag:'', days:[
+    ['Mon','Rest','—','rest'],
+    ['Tue','Easy run','3 mi','run'],
+    ['Wed','Upper body + core','—','strength'],
+    ['Thu','VO2 intervals — 10×1 min / 60s easy jog','2 mi','vo2'],
+    ['Fri','Rest','—','rest'],
+    ['Sat','Long run','8 mi','long'],
+    ['Sun','Rest','—','rest']]},
+  {w:7, total:16, long:8, cutback:false, tag:'quality', days:[
+    ['Mon','Rest','—','rest'],
+    ['Tue','Easy run','4 mi','run'],
+    ['Wed','Lower body strength','—','strength'],
+    ['Thu','Tempo intervals — 4×5 min at comfortably hard / 2 min easy jog','3 mi','vo2'],
+    ['Fri','Rest','—','rest'],
+    ['Sat','Long run','8 mi','long'],
+    ['Sun','Rest','—','rest']]},
+  {w:8, total:17, long:9, cutback:false, tag:'quality', days:[
+    ['Mon','Rest','—','rest'],
+    ['Tue','Easy run','4 mi','run'],
+    ['Wed','Upper body + core','—','strength'],
+    ['Thu','Tempo — 20 min continuous at comfortably hard effort','3 mi','vo2'],
+    ['Fri','Rest','—','rest'],
+    ['Sat','Long run','9 mi','long'],
+    ['Sun','Rest','—','rest']]},
+  {w:9, total:11, long:6, cutback:true, tag:'cutback', days:[
+    ['Mon','Rest','—','rest'],
+    ['Tue','Easy run','3 mi','run'],
+    ['Wed','Lower body — lighter load','—','strength'],
+    ['Thu','Easy jog + 4 strides','2 mi','run'],
+    ['Fri','Rest','—','rest'],
+    ['Sat','Long run — easy','6 mi','long'],
+    ['Sun','Rest','—','rest']]},
+  {w:10, total:18, long:10, cutback:false, tag:'quality', days:[
+    ['Mon','Rest','—','rest'],
+    ['Tue','Easy run','4 mi','run'],
+    ['Wed','Upper body + core','—','strength'],
+    ['Thu','Tempo — 25 min at comfortably hard','3 mi','vo2'],
+    ['Fri','Rest','—','rest'],
+    ['Sat','Long run','10 mi','long'],
+    ['Sun','Rest','—','rest']]},
+  {w:11, total:19, long:11, cutback:false, tag:'quality', days:[
+    ['Mon','Rest','—','rest'],
+    ['Tue','Easy run','4 mi','run'],
+    ['Wed','Lower body strength','—','strength'],
+    ['Thu','Progression run — easy first half, comfortably hard second half','4 mi','vo2'],
+    ['Fri','Rest','—','rest'],
+    ['Sat','Long run','11 mi','long'],
+    ['Sun','Rest','—','rest']]},
+  {w:12, total:13, long:7, cutback:true, tag:'cutback', days:[
+    ['Mon','Rest','—','rest'],
+    ['Tue','Easy run','3 mi','run'],
+    ['Wed','Upper body + core — lighter','—','strength'],
+    ['Thu','Easy jog + strides','2 mi','run'],
+    ['Fri','Rest','—','rest'],
+    ['Sat','Long run — easy','7 mi','long'],
+    ['Sun','Rest','—','rest']]},
+  {w:13, total:20, long:11, cutback:false, tag:'quality', days:[
+    ['Mon','Rest','—','rest'],
+    ['Tue','Easy run','4 mi','run'],
+    ['Wed','Lower body strength','—','strength'],
+    ['Thu','Tempo — 30 min continuous','4 mi','vo2'],
+    ['Fri','Rest','—','rest'],
+    ['Sat','Long run','11 mi','long'],
+    ['Sun','Rest','—','rest']]},
+  {w:14, total:21, long:12, cutback:false, tag:'quality', days:[
+    ['Mon','Rest','—','rest'],
+    ['Tue','Easy run','4 mi','run'],
+    ['Wed','Upper body + core','—','strength'],
+    ['Thu','Progression run','4 mi','vo2'],
+    ['Fri','Rest','—','rest'],
+    ['Sat','Long run','12 mi','long'],
+    ['Sun','Rest','—','rest']]},
+  {w:15, total:21, long:11, cutback:false, tag:'quality', days:[
+    ['Mon','Rest','—','rest'],
+    ['Tue','Easy run','4 mi','run'],
+    ['Wed','Lower body strength — include single-leg work for stability','—','strength'],
+    ['Thu','Race-pace work — 2×2 mi at goal feel / 3 min easy between','4 mi','vo2'],
+    ['Fri','Rest','—','rest'],
+    ['Sat','Long run (last 2 mi at race effort)','11 mi','long'],
+    ['Sun','Rest','—','rest']]},
+  {w:16, total:14, long:7, cutback:true, tag:'cutback', days:[
+    ['Mon','Rest','—','rest'],
+    ['Tue','Easy run','3 mi','run'],
+    ['Wed','Upper body + core — lighter week','—','strength'],
+    ['Thu','Easy jog + 4 strides at race effort','2 mi','run'],
+    ['Fri','Rest','—','rest'],
+    ['Sat','Long run — easy','7 mi','long'],
+    ['Sun','Rest','—','rest']]},
+  {w:17, total:22, long:12, cutback:false, tag:'quality', days:[
+    ['Mon','Rest','—','rest'],
+    ['Tue','Easy run','4 mi','run'],
+    ['Wed','Lower body strength','—','strength'],
+    ['Thu','Race-pace work — 3×1.5 mi at goal effort / 90s between','4 mi','vo2'],
+    ['Fri','Rest','—','rest'],
+    ['Sat','Long run (last 3 mi at race effort)','12 mi','long'],
+    ['Sun','Rest','—','rest']]},
+  {w:18, total:23, long:12, cutback:false, tag:'quality', days:[
+    ['Mon','Rest','—','rest'],
+    ['Tue','Easy run','4 mi','run'],
+    ['Wed','Upper body + core','—','strength'],
+    ['Thu','Tempo — 35 min continuous at comfortably hard','4 mi','vo2'],
+    ['Fri','Rest','—','rest'],
+    ['Sat','Long run','12 mi','long'],
+    ['Sun','Rest','—','rest']]},
+  {w:19, total:15, long:8, cutback:true, tag:'cutback', days:[
+    ['Mon','Rest','—','rest'],
+    ['Tue','Easy run','3 mi','run'],
+    ['Wed','Lower body — lighter load','—','strength'],
+    ['Thu','Easy jog + strides','3 mi','run'],
+    ['Fri','Rest','—','rest'],
+    ['Sat','Long run — easy','8 mi','long'],
+    ['Sun','Rest','—','rest']]},
+  {w:20, total:24, long:12, cutback:false, tag:'quality', days:[
+    ['Mon','Rest','—','rest'],
+    ['Tue','Easy run','4 mi','run'],
+    ['Wed','Lower body strength','—','strength'],
+    ['Thu','Race-pace work — 4×1 mi / 60s between (race simulation effort)','4 mi','vo2'],
+    ['Fri','Rest','—','rest'],
+    ['Sat','Long run — race-day simulation: use race shoes and fuel','12 mi','long'],
+    ['Sun','Rest','—','rest']]},
+  {w:21, total:25, long:13, cutback:false, tag:'quality', days:[
+    ['Mon','Rest','—','rest'],
+    ['Tue','Easy run','4 mi','run'],
+    ['Wed','Upper body + core — peak week, keep strength moderate','—','strength'],
+    ['Thu','Progression run — last 3 mi at race effort','4 mi','vo2'],
+    ['Fri','Rest','—','rest'],
+    ['Sat','Long run — peak training run!','13 mi','long'],
+    ['Sun','Rest','—','rest']]},
+  {w:22, total:17, long:9, cutback:true, tag:'cutback', days:[
+    ['Mon','Rest','—','rest'],
+    ['Tue','Easy run','3 mi','run'],
+    ['Wed','Lower body — light maintenance only','—','strength'],
+    ['Thu','Easy jog + strides','3 mi','run'],
+    ['Fri','Rest','—','rest'],
+    ['Sat','Long run — easy','9 mi','long'],
+    ['Sun','Rest','—','rest']]},
+  {w:23, total:16, long:8, cutback:false, tag:'taper', days:[
+    ['Mon','Rest','—','rest'],
+    ['Tue','Easy run','3 mi','run'],
+    ['Wed','Upper body + core — light, no heavy leg work during taper','—','strength'],
+    ['Thu','Easy run + 4 strides at race effort','3 mi','run'],
+    ['Fri','Rest','—','rest'],
+    ['Sat','Long run — easy','8 mi','long'],
+    ['Sun','Rest','—','rest']]},
+  {w:24, total:11, long:5, cutback:false, tag:'taper', days:[
+    ['Mon','Rest','—','rest'],
+    ['Tue','Easy run','3 mi','run'],
+    ['Wed','Light upper body + core only — no legs','—','strength'],
+    ['Thu','Easy run + 4 strides','2 mi','run'],
+    ['Fri','Rest','—','rest'],
+    ['Sat','Easy run','5 mi','long'],
+    ['Sun','Rest','—','rest']]},
+  {w:25, total:8, long:4, cutback:false, tag:'taper', days:[
+    ['Mon','Rest','—','rest'],
+    ['Tue','Easy run + 2 strides','3 mi','run'],
+    ['Wed','Rest or light 20 min walk','—','rest'],
+    ['Thu','Easy shakeout + 2 strides','2 mi','run'],
+    ['Fri','Rest','—','rest'],
+    ['Sat','Easy run','4 mi','run'],
+    ['Sun','Rest','—','rest']]},
+  {w:26, total:16, long:13.1, cutback:false, tag:'race', days:[
+    ['Mon','Rest','—','rest'],
+    ['Tue','Easy shakeout + 2 strides','2 mi','run'],
+    ['Wed','Rest','—','rest'],
+    ['Thu','Rest','—','rest'],
+    ['Fri','Easy 10 min shakeout jog','1 mi','run'],
+    ['Sat','Race day!','13.1 mi','long'],
+    ['Sun','Rest, celebrate, stretch','—','rest']]},
+];
+
+const phases = [
+  {id:'p1',range:[0,5]},{id:'p2',range:[6,13]},{id:'p3',range:[14,21]},{id:'p4',range:[22,25]}
+];
+
+let activeWeek = null;
+
+function tagHTML(tag) {
+  if (!tag) return '';
+  const cls = {cutback:'tag-cutback',race:'tag-race',taper:'tag-taper',quality:'tag-quality'};
+  const lbl = {cutback:'Cutback',race:'Race!',taper:'Taper',quality:'Quality day'};
+  return `<span class="wk-tag ${cls[tag]}">${lbl[tag]}</span>`;
+}
+
+const badgeClass = {run:'b-run',strength:'b-strength',vo2:'b-vo2',long:'b-long',rest:'b-rest'};
+const badgeLabel = {run:'Run',strength:'Strength',vo2:'VO2/tempo',long:'Long run',rest:'Rest'};
+
+phases.forEach(({id,range}) => {
+  const grid = document.getElementById(id);
+  for (let i = range[0]; i <= range[1]; i++) {
+    const wk = W[i];
+    const card = document.createElement('div');
+    card.className = 'week-card' + (wk.cutback ? ' cutback' : '');
+    card.id = 'wk'+i;
+    card.innerHTML = `<div class="wk-num">Week ${wk.w}</div><div class="wk-miles">${wk.total} <span>run mi</span></div><div class="wk-long">Long: ${wk.long} mi</div>${tagHTML(wk.tag)}`;
+    card.addEventListener('click', () => toggle(i, card));
+    grid.appendChild(card);
+  }
+});
+
+function toggle(i, card) {
+  const panel = document.getElementById('detail');
+  document.querySelectorAll('.week-card').forEach(c => c.classList.remove('active'));
+  if (activeWeek === i) { activeWeek = null; panel.style.display = 'none'; return; }
+  activeWeek = i;
+  card.classList.add('active');
+  const wk = W[i];
+  panel.style.display = 'block';
+  panel.innerHTML = `<div class="detail-title">Week ${wk.w} — ${wk.total} running miles</div>` +
+    wk.days.map(([day,desc,mi,type]) =>
+      `<div class="day-row"><span class="day-name">${day}</span><span class="day-desc"><span class="day-badge ${badgeClass[type]}">${badgeLabel[type]}</span>${desc}</span><span class="day-miles">${mi}</span></div>`
+    ).join('');
+  panel.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+const colors = W.map(w => w.tag==='race' ? '#D85A30' : (w.cutback||w.tag==='cutback') ? '#1D9E75' : '#378ADD');
+new Chart(document.getElementById('mc'), {
+  type:'bar',
+  data:{ labels: W.map(w=>'W'+w.w), datasets:[{data:W.map(w=>w.total), backgroundColor:colors, borderRadius:3, borderSkipped:false}] },
+  options:{
+    responsive:true, maintainAspectRatio:false,
+    plugins:{legend:{display:false}, tooltip:{callbacks:{label:ctx=>ctx.parsed.y+' mi'}}},
+    scales:{
+      x:{ticks:{font:{size:10},autoSkip:true,maxRotation:0,color:'#888780'},grid:{display:false}},
+      y:{ticks:{font:{size:10},color:'#888780'},grid:{color:'rgba(136,135,128,0.1)'}}
+    }
+  }
+});
+</script>
