@@ -137,6 +137,43 @@
     .b-vo2 { background: #EEEDFE; color: #534AB7; }
     .b-long { background: #FAECE7; color: #993C1D; }
     .b-rest { background: #F1EFE8; color: #5F5E5A; }
+
+    /* Day completion tracking */
+    .day-check {
+      width: 24px;
+      height: 24px;
+      border: 2px solid var(--color-border-secondary);
+      border-radius: 50%;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all .15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .day-check:active { transform: scale(0.9); }
+    .day-check.done {
+      background: #1D9E75;
+      border-color: #1D9E75;
+    }
+    .day-check.done::after {
+      content: '✓';
+      color: white;
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .day-row.completed .day-desc,
+    .day-row.completed .day-miles,
+    .day-row.completed .day-name {
+      opacity: 0.5;
+      text-decoration: line-through;
+      text-decoration-color: var(--color-text-tertiary);
+    }
+    .day-row.completed .day-badge {
+      opacity: 0.5;
+    }
+
     .chart-wrap { position: relative; width: 100%; height: 120px; margin-bottom: 20px; }
     .legend { display: flex; flex-wrap: wrap; gap: 12px 16px; font-size: 12px; color: var(--color-text-secondary); margin-bottom: 12px; }
     .legend span { display: flex; align-items: center; gap: 6px; }
@@ -396,6 +433,28 @@ function tagHTML(tag) {
 const badgeClass = {run:'b-run',strength:'b-strength',vo2:'b-vo2',long:'b-long',rest:'b-rest'};
 const badgeLabel = {run:'Run',strength:'Strength',vo2:'VO2/tempo',long:'Long run',rest:'Rest'};
 
+// Simple localStorage tracking
+const STORAGE_KEY = 'hm-plan-completed';
+function getCompleted() {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
+  } catch { return {}; }
+}
+function setCompleted(data) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+function toggleDay(weekNum, dayIndex) {
+  const key = `w${weekNum}d${dayIndex}`;
+  const completed = getCompleted();
+  if (completed[key]) {
+    delete completed[key];
+  } else {
+    completed[key] = true;
+  }
+  setCompleted(completed);
+  return !!completed[key];
+}
+
 phases.forEach(({id,range}) => {
   const grid = document.getElementById(id);
   for (let i = range[0]; i <= range[1]; i++) {
@@ -416,11 +475,33 @@ function toggle(i, card) {
   activeWeek = i;
   card.classList.add('active');
   const wk = W[i];
+  const completed = getCompleted();
   panel.style.display = 'block';
   panel.innerHTML = `<div class="detail-title">Week ${wk.w} — ${wk.total} running miles</div>` +
-    wk.days.map(([day,desc,mi,type]) =>
-      `<div class="day-row"><span class="day-name">${day}</span><span class="day-desc"><span class="day-badge ${badgeClass[type]}">${badgeLabel[type]}</span>${desc}</span><span class="day-miles">${mi}</span></div>`
-    ).join('');
+    wk.days.map(([day,desc,mi,type], idx) => {
+      const key = `w${wk.w}d${idx}`;
+      const isDone = completed[key];
+      return `<div class="day-row${isDone ? ' completed' : ''}" data-week="${wk.w}" data-day="${idx}">
+        <div class="day-check${isDone ? ' done' : ''}"></div>
+        <span class="day-name">${day}</span>
+        <span class="day-desc"><span class="day-badge ${badgeClass[type]}">${badgeLabel[type]}</span>${desc}</span>
+        <span class="day-miles">${mi}</span>
+      </div>`;
+    }).join('');
+
+  // Add click handlers for checkboxes
+  panel.querySelectorAll('.day-check').forEach(check => {
+    check.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const row = check.closest('.day-row');
+      const weekNum = parseInt(row.dataset.week);
+      const dayIdx = parseInt(row.dataset.day);
+      const nowDone = toggleDay(weekNum, dayIdx);
+      check.classList.toggle('done', nowDone);
+      row.classList.toggle('completed', nowDone);
+    });
+  });
+
   panel.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 
