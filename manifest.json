@@ -1,0 +1,19 @@
+{
+  "name": "Half Marathon Planner",
+  "short_name": "HM Planner",
+  "description": "26-week half marathon training plan",
+  "start_url": "/index.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#378ADD",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect fill='%23378ADD' width='512' height='512' rx='100'/><text x='256' y='340' font-size='256' text-anchor='middle' fill='white'>🏃</text></svg>",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
+

@@ -1,39 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="HM Planner">
+  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#1a1a1a" media="(prefers-color-scheme: dark)">
+  <title>Half Marathon Planner</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%23378ADD' width='100' height='100' rx='20'/><text x='50' y='68' font-size='50' text-anchor='middle' fill='white'>🏃</text></svg>">
+  <style>
+    :root {
+      --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --color-text-primary: #1a1a1a;
+      --color-text-secondary: #555;
+      --color-text-tertiary: #888;
+      --color-background-primary: #fff;
+      --color-background-secondary: #f7f7f7;
+      --color-border-primary: #333;
+      --color-border-secondary: #ccc;
+      --color-border-tertiary: #e5e5e5;
+      --border-radius-md: 10px;
+      --safe-area-top: env(safe-area-inset-top, 0px);
+      --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+      --safe-area-left: env(safe-area-inset-left, 0px);
+      --safe-area-right: env(safe-area-inset-right, 0px);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --color-text-primary: #f5f5f5;
+        --color-text-secondary: #bbb;
+        --color-text-tertiary: #888;
+        --color-background-primary: #1a1a1a;
+        --color-background-secondary: #2a2a2a;
+        --color-border-primary: #888;
+        --color-border-secondary: #555;
+        --color-border-tertiary: #333;
+      }
+      .tag-cutback { background: #0F4F3A; color: #7FDCB8; }
+      .tag-race { background: #5C2A14; color: #F8A888; }
+      .tag-taper { background: #322E6B; color: #B4B0E8; }
+      .tag-quality { background: #1A3A5C; color: #8CC4F8; }
+      .b-run { background: #1A3A5C; color: #8CC4F8; }
+      .b-strength { background: #0F4F3A; color: #7FDCB8; }
+      .b-vo2 { background: #322E6B; color: #B4B0E8; }
+      .b-long { background: #5C2A14; color: #F8A888; }
+      .b-rest { background: #3a3a38; color: #a5a5a0; }
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html { background: var(--color-background-primary); }
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--color-background-primary);
+      font-family: var(--font-sans);
+      -webkit-text-size-adjust: 100%;
+    }
+    .plan-wrap {
+      padding: calc(var(--safe-area-top) + 1rem) calc(var(--safe-area-right) + 1rem) calc(var(--safe-area-bottom) + 1rem) calc(var(--safe-area-left) + 1rem);
+      font-family: var(--font-sans);
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    .phase-label { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--color-text-tertiary); margin: 1.5rem 0 .5rem; }
+    .weeks-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    @media (min-width: 480px) {
+      .weeks-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+    @media (min-width: 640px) {
+      .weeks-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    }
+    .week-card {
+      border: 1px solid var(--color-border-tertiary);
+      border-radius: var(--border-radius-md);
+      padding: 12px 14px;
+      cursor: pointer;
+      transition: border-color .15s, background .15s, transform .1s;
+      background: var(--color-background-primary);
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+      min-height: 88px;
+    }
+    .week-card:active { transform: scale(0.98); }
+    .week-card.active { border-color: var(--color-border-primary); background: var(--color-background-secondary); }
+    .week-card.cutback { border-left: 3px solid #1D9E75; border-radius: 0 var(--border-radius-md) var(--border-radius-md) 0; }
+    .wk-num { font-size: 12px; color: var(--color-text-tertiary); margin-bottom: 4px; font-weight: 500; }
+    .wk-miles { font-size: 20px; font-weight: 600; color: var(--color-text-primary); }
+    .wk-miles span { font-size: 12px; font-weight: 400; color: var(--color-text-tertiary); }
+    .wk-long { font-size: 13px; color: var(--color-text-secondary); margin-top: 4px; }
+    .wk-tag { display: inline-block; font-size: 10px; padding: 2px 8px; border-radius: 4px; margin-top: 6px; font-weight: 600; }
+    .tag-cutback { background: #E1F5EE; color: #0F6E56; }
+    .tag-race { background: #FAECE7; color: #993C1D; }
+    .tag-taper { background: #EEEDFE; color: #534AB7; }
+    .tag-quality { background: #E6F1FB; color: #185FA5; }
+    .detail-panel {
+      border: 1px solid var(--color-border-tertiary);
+      border-radius: var(--border-radius-md);
+      padding: 16px;
+      margin-top: 16px;
+      background: var(--color-background-primary);
+    }
+    .detail-title { font-size: 16px; font-weight: 600; color: var(--color-text-primary); margin: 0 0 14px; }
+    .day-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 10px;
+      align-items: baseline;
+      padding: 10px 0;
+      border-top: 1px solid var(--color-border-tertiary);
+      font-size: 14px;
+    }
+    .day-name {
+      color: var(--color-text-secondary);
+      font-weight: 600;
+      min-width: 44px;
+      flex-shrink: 0;
+    }
+    .day-desc {
+      color: var(--color-text-primary);
+      line-height: 1.5;
+      flex: 1 1 200px;
+    }
+    .day-miles {
+      color: var(--color-text-tertiary);
+      font-size: 13px;
+      white-space: nowrap;
+      font-weight: 500;
+      margin-left: auto;
+    }
+    .day-badge { display: inline-block; font-size: 10px; padding: 2px 6px; border-radius: 4px; margin-right: 6px; font-weight: 600; vertical-align: middle; }
+    .b-run { background: #E6F1FB; color: #185FA5; }
+    .b-strength { background: #E1F5EE; color: #0F6E56; }
+    .b-vo2 { background: #EEEDFE; color: #534AB7; }
+    .b-long { background: #FAECE7; color: #993C1D; }
+    .b-rest { background: #F1EFE8; color: #5F5E5A; }
+    .chart-wrap { position: relative; width: 100%; height: 120px; margin-bottom: 20px; }
+    .legend { display: flex; flex-wrap: wrap; gap: 12px 16px; font-size: 12px; color: var(--color-text-secondary); margin-bottom: 12px; }
+    .legend span { display: flex; align-items: center; gap: 6px; }
+    .leg-dot { width: 10px; height: 10px; border-radius: 3px; }
 
-<style>
-* { box-sizing: border-box; }
-.plan-wrap { padding: 1rem 0; font-family: var(--font-sans); }
-.phase-label { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: .06em; color: var(--color-text-tertiary); margin: 1.25rem 0 .4rem; }
-.weeks-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
-.week-card { border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); padding: 10px 12px; cursor: pointer; transition: border-color .15s, background .15s; background: var(--color-background-primary); }
-.week-card:hover { border-color: var(--color-border-secondary); background: var(--color-background-secondary); }
-.week-card.active { border-color: var(--color-border-primary); background: var(--color-background-secondary); }
-.week-card.cutback { border-left: 2px solid #1D9E75; border-radius: 0 var(--border-radius-md) var(--border-radius-md) 0; }
-.wk-num { font-size: 11px; color: var(--color-text-tertiary); margin-bottom: 2px; }
-.wk-miles { font-size: 18px; font-weight: 500; color: var(--color-text-primary); }
-.wk-miles span { font-size: 11px; font-weight: 400; color: var(--color-text-tertiary); }
-.wk-long { font-size: 12px; color: var(--color-text-secondary); margin-top: 2px; }
-.wk-tag { display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 4px; margin-top: 4px; font-weight: 500; }
-.tag-cutback { background: #E1F5EE; color: #0F6E56; }
-.tag-race { background: #FAECE7; color: #993C1D; }
-.tag-taper { background: #EEEDFE; color: #534AB7; }
-.tag-quality { background: #E6F1FB; color: #185FA5; }
-.detail-panel { border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); padding: 16px; margin-top: 12px; background: var(--color-background-primary); }
-.detail-title { font-size: 14px; font-weight: 500; color: var(--color-text-primary); margin: 0 0 12px; }
-.day-row { display: grid; grid-template-columns: 60px 1fr auto; gap: 8px; align-items: start; padding: 7px 0; border-top: 0.5px solid var(--color-border-tertiary); font-size: 13px; }
-.day-name { color: var(--color-text-secondary); font-weight: 500; padding-top: 1px; }
-.day-desc { color: var(--color-text-primary); line-height: 1.5; }
-.day-miles { color: var(--color-text-tertiary); font-size: 12px; white-space: nowrap; padding-top: 1px; }
-.day-badge { display: inline-block; font-size: 10px; padding: 1px 5px; border-radius: 3px; margin-right: 4px; font-weight: 500; vertical-align: middle; }
-.b-run { background: #E6F1FB; color: #185FA5; }
-.b-strength { background: #E1F5EE; color: #0F6E56; }
-.b-vo2 { background: #EEEDFE; color: #534AB7; }
-.b-long { background: #FAECE7; color: #993C1D; }
-.b-rest { background: #F1EFE8; color: #5F5E5A; }
-.chart-wrap { position: relative; width: 100%; height: 100px; margin-bottom: 16px; }
-.legend { display: flex; flex-wrap: wrap; gap: 12px; font-size: 11px; color: var(--color-text-secondary); margin-bottom: 8px; }
-.legend span { display: flex; align-items: center; gap: 4px; }
-.leg-dot { width: 8px; height: 8px; border-radius: 2px; }
-</style>
+    /* Smooth scrolling for iOS */
+    html { scroll-behavior: smooth; -webkit-overflow-scrolling: touch; }
+  </style>
+</head>
+<body>
 <div class="plan-wrap">
   <div class="legend">
     <span><span class="leg-dot" style="background:#378ADD"></span>Running miles/week</span>
@@ -325,3 +438,5 @@ new Chart(document.getElementById('mc'), {
   }
 });
 </script>
+</body>
+</html>
